@@ -1,81 +1,97 @@
-# To-do List Application
+from flask import Flask, request, redirect, url_for, render_template_string
 
-# Initialize an empty list to hold the tasks
+app = Flask(__name__)
+
+# In-memory storage for tasks
 todo_list = []
 
-# Function to display the current to-do list
-def show_tasks():
-    if not todo_list:
-        print("No tasks in the list.")
-    else:
-        print("\nTo-Do List:")
-        for idx, task in enumerate(todo_list, start=1):
-            status = "✓" if task['completed'] else "✗"
-            print(f"{idx}. {task['description']} [{status}]")
-    print()
+# HTML template as a string
+html_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            color: #333;
+        }
+        .task {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .completed {
+            text-decoration: line-through;
+            color: gray;
+        }
+        .actions {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
 
-# Function to add a task to the list
+    <h1>To-Do List</h1>
+
+    <!-- Task Input Form -->
+    <form action="/add" method="POST">
+        <input type="text" name="task" placeholder="Enter a new task" required>
+        <button type="submit">Add Task</button>
+    </form>
+
+    <!-- Task List -->
+    <ul>
+        {% for task in todo_list %}
+        <li class="task {% if task.completed %}completed{% endif %}">
+            {{ loop.index }}. {{ task.description }}
+            <span class="actions">
+                {% if not task.completed %}
+                <a href="/complete/{{ loop.index0 }}">Mark as completed</a>
+                {% endif %}
+                <a href="/delete/{{ loop.index0 }}">Delete</a>
+            </span>
+        </li>
+        {% else %}
+        <p>No tasks yet. Add one above!</p>
+        {% endfor %}
+    </ul>
+
+</body>
+</html>
+"""
+
+# Route for the homepage
+@app.route("/")
+def index():
+    return render_template_string(html_template, todo_list=todo_list)
+
+# Route to add a task
+@app.route("/add", methods=["POST"])
 def add_task():
-    task_desc = input("Enter the task description: ")
-    todo_list.append({"description": task_desc, "completed": False})
-    print(f"Task '{task_desc}' added.\n")
+    task = request.form.get("task")
+    if task:
+        todo_list.append({"description": task, "completed": False})
+    return redirect(url_for("index"))
 
-# Function to mark a task as completed
-def complete_task():
-    show_tasks()
-    if not todo_list:
-        return
-    try:
-        task_num = int(input("Enter the task number to mark as completed: "))
-        if 1 <= task_num <= len(todo_list):
-            todo_list[task_num - 1]['completed'] = True
-            print(f"Task {task_num} marked as completed.\n")
-        else:
-            print("Invalid task number.\n")
-    except ValueError:
-        print("Please enter a valid number.\n")
+# Route to mark a task as completed
+@app.route("/complete/<int:task_index>")
+def complete_task(task_index):
+    if 0 <= task_index < len(todo_list):
+        todo_list[task_index]["completed"] = True
+    return redirect(url_for("index"))
 
-# Function to delete a task from the list
-def delete_task():
-    show_tasks()
-    if not todo_list:
-        return
-    try:
-        task_num = int(input("Enter the task number to delete: "))
-        if 1 <= task_num <= len(todo_list):
-            removed_task = todo_list.pop(task_num - 1)
-            print(f"Task '{removed_task['description']}' deleted.\n")
-        else:
-            print("Invalid task number.\n")
-    except ValueError:
-        print("Please enter a valid number.\n")
-
-# Main loop for the application
-def main():
-    while True:
-        print("To-Do List Menu:")
-        print("1. View tasks")
-        print("2. Add task")
-        print("3. Mark task as completed")
-        print("4. Delete task")
-        print("5. Exit")
-        
-        choice = input("Choose an option: ")
-        
-        if choice == '1':
-            show_tasks()
-        elif choice == '2':
-            add_task()
-        elif choice == '3':
-            complete_task()
-        elif choice == '4':
-            delete_task()
-        elif choice == '5':
-            print("Exiting the To-Do List application.")
-            break
-        else:
-            print("Invalid choice, please choose a valid option.\n")
+# Route to delete a task
+@app.route("/delete/<int:task_index>")
+def delete_task(task_index):
+    if 0 <= task_index < len(todo_list):
+        todo_list.pop(task_index)
+    return redirect(url_for("index"))
 
 # Run the application
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
